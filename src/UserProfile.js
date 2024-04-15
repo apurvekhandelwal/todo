@@ -16,7 +16,7 @@ import './Style/UserProfile.css';
 
 const UserProfile = (props) => {
     const { id } = props;
-    // console.log(id);
+    console.log(id);
 
     const [userName, setUserName] = useState("");
     const [todolists, setTodolists] = useState([]);
@@ -89,7 +89,7 @@ const UserProfile = (props) => {
             }
         };
         return fetchUserDetails;
-    }, []);
+    }, [id]);
 
     const deleteTodolist = async (todolistId) => {
         try {

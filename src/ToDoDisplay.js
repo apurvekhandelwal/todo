@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getUserById } from "./useFirebase";
+// import { getUserById } from "./useFirebase";
 import { addDoc, collection, query, where, getDocs, doc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from "./firebase";
 import UserProfile from "./UserProfile";
@@ -11,9 +11,9 @@ const Todo = () => {
     const { state } = useLocation();
     const userId = state?.userUid;
 
-    const [user, setUser] = useState({
-        Name: '',
-    });
+    // const [user, setUser] = useState({
+    //     Name: '',
+    // });
 
 
     const [todolistname, setTodolistname] = useState("");
@@ -51,7 +51,7 @@ const Todo = () => {
                     });
                     setTodolistOptions(options);
                 });
-
+                console.log(userId);
                 return () => unsubscribe();
             } catch (error) {
                 console.error("Error fetching todo lists:", error);
@@ -59,7 +59,7 @@ const Todo = () => {
         };
 
         fetchData();
-    }, []);
+    }, [userId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
