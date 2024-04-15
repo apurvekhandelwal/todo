@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getUserById } from "./useFirebase";
-import { addDoc, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
-import { db } from "./firebase";
+import { addDoc, collection, query, where, getDocs, doc, onSnapshot } from 'firebase/firestore';
+import { db, auth } from "./firebase";
+import UserProfile from "./UserProfile";
+import './Style/TodoDispaly.css';
+
 
 const Todo = () => {
     const { state } = useLocation();
@@ -12,219 +15,200 @@ const Todo = () => {
         Name: '',
     });
 
-    const [newTodo, setNewTodo] = useState({
-        name: '',
-        completed: false,
-    });
 
-    const [newTask, setNewTask] = useState({
-        title: '',
-        description: '',
-        dueDate: null,
-        priority: 'low',
-    });
+    const [todolistname, setTodolistname] = useState("");
+    const [newTodolistName, setNewTodolistName] = useState("");
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [date, setDate] = useState("");
+    const [priority, setPriority] = useState("Low");
+    const [todolistOptions, setTodolistOptions] = useState([]);
 
-    const [todos, setTodos] = useState([]);
+    const today = new Date().toISOString().split("T")[0];
 
-    const getTodoDetails = async (userId) => {
-        if (!userId) return;
+    const handleTodoListChange = (e) => {
+        const selectedValue = e.target.value;
+        setTodolistname(selectedValue);
 
-        const todoQuery = query(collection(db, "Todos"), where("userID", "==", userId));
-        const querySnapshot = await getDocs(todoQuery);
+        if (selectedValue !== "addNew") {
+            setNewTodolistName("");
+        }
+    };
 
-        const todosList = [];
-        querySnapshot.forEach((doc) => {
-            const todo = { ...doc.data(), id: doc.id };
-            const tasksQuery = query(collection(db, "Tasks"), where("todoID", "==", todo.id));
-            getDocs(tasksQuery).then((taskSnapshot) => {
-                const tasksList = [];
-                taskSnapshot.forEach((taskDoc) => {
-                    tasksList.push({ ...taskDoc.data(), id: taskDoc.id });
-                });
-                todo.tasks = tasksList;
-                todosList.push(todo);
-
-                console.log("User Name:", user.Name);
-                console.log("Todo ID:", todo.id);
-                console.log("Todo Name:", todo.name);
-                console.log("Tasks:", todo.tasks);
-            });
-        });
-
-        setTodos(todosList);
+    const handleNewTodoListNameChange = (e) => {
+        setNewTodolistName(e.target.value);
     };
 
     useEffect(() => {
-        if (userId) {
-            const fetchUser = async () => {
-                const fetchedUser = await getUserById(userId);
-                if (fetchedUser) {
-                    setUser(prevUser => ({
-                        ...prevUser,
-                        Name: fetchedUser.Name,
-                    }));
-                    // Fetch todo details with tasks
-                    getTodoDetails(userId);
-                }
-            };
-            fetchUser();
-        }
-    }, [userId]);
-
-    const handleTodoSubmit = async (e) => {
-        e.preventDefault();
-
-        const newTodoWithUserID = { ...newTodo, userID: userId };
-
-        try {
-            const docRef = await addDoc(collection(db, 'Todos'), newTodoWithUserID);
-            const newTodo = { ...newTodoWithUserID, id: docRef.id };
-            setTodos((prevTodos) => [...prevTodos, newTodo]);
-            setNewTodo({ name: '', completed: false });
-
-            console.log("New todo ID: ", newTodo.id);
-        } catch (error) {
-            console.error('Error adding todo: ', error);
-        }
-    };
-
-    const handleTaskSubmit = async (todoId) => {
-        const newTaskWithTodoID = { ...newTask, todoID: todoId };
-
-        try {
-            setNewTask(prevNewTask => ({ ...prevNewTask, todoID: todoId })); // Update newTask with todoID
-            const docRef = await addDoc(collection(db, 'Tasks'), newTaskWithTodoID);
-            const newTask = { ...newTaskWithTodoID, id: docRef.id };
-
-            setTodos((prevTodos) => {
-                const updatedTodos = prevTodos.map((todo) => {
-                    if (todo.id === todoId) {
-                        return { ...todo, tasks: (todo.tasks || []).concat(newTask) };
-                    }
-                    return todo;
+        const fetchData = async () => {
+            try {
+                const userRef = doc(db, "Users", userId);
+                const q = query(collection(userRef, "todolists"));
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    const options = [];
+                    snapshot.forEach((doc) => {
+                        options.push(doc.data().name);
+                    });
+                    setTodolistOptions(options);
                 });
-                return updatedTodos;
-            });
 
-            setNewTask({ title: '', description: '', dueDate: null, priority: 'low', todoID: '' });
-        } catch (error) {
-            console.error('Error adding task: ', error);
-        }
-    };
-
-    const q = query(collection(db, 'Todos'), where('userID', '==', userId));
-
-    useEffect(() => {
-        const getTodos = async () => {
-            const querySnapshot = await getDocs(q);
-            const todosList = [];
-            querySnapshot.forEach((doc) => {
-                todosList.push({ ...doc.data(), id: doc.id });
-            });
-            setTodos(todosList);
+                return () => unsubscribe();
+            } catch (error) {
+                console.error("Error fetching todo lists:", error);
+            }
         };
 
-        if (userId) {
-            getTodos();
-        }
-    }, [userId, q]);
+        fetchData();
+    }, []);
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+
+            if (userId) {
+                const selectedTodoListName = newTodolistName || todolistname;
+
+                if (
+                    !selectedTodoListName ||
+                    selectedTodoListName === "Select Todo List"
+                ) {
+                    console.log("Please select a todo list.");
+                    return;
+                }
+
+                const userRef = doc(db, "Users", userId);
+                const todolistQuery = query(
+                    collection(userRef, "todolists"),
+                    where("name", "==", selectedTodoListName)
+                );
+                const todolistSnapshot = await getDocs(todolistQuery);
+
+                if (todolistSnapshot.empty && newTodolistName) {
+                    const newTodolistRef = await addDoc(
+                        collection(userRef, "todolists"),
+                        {
+                            name: newTodolistName,
+                            userID: userId
+                        }
+                    );
+
+                    await addDoc(collection(newTodolistRef, "tasks"), {
+                        title: title,
+                        description: description,
+                        date: date,
+                        priority: priority,
+                    });
+                } else if (!todolistSnapshot.empty) {
+                    todolistSnapshot.forEach(async (doc) => {
+                        await addDoc(collection(doc.ref, "tasks"), {
+                            title: title,
+                            description: description,
+                            date: date,
+                            priority: priority,
+                        });
+                    });
+                }
+                setTodolistname("");
+                setNewTodolistName("");
+                setTitle("");
+                setDescription("");
+                setDate("");
+                setPriority("Low");
+            } else {
+                console.log("User is not signed in to add todo list to database");
+            }
+
+        } catch (error) {
+            console.error(error.message);
+        }
+    };
+
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        auth.signOut().then(() => {
+            // Sign-out successful.
+            console.log("User signed out successfully.");
+            navigate("/signin");
+        }).catch((error) => {
+            // An error happened.
+            console.log("Error signing out:", error);
+        });
+    };
     return (
-        <>
-            {user && (
-                <>
-                    <h1>Create New Todo ({user.Name})</h1>
-                    <form onSubmit={handleTodoSubmit}>
-                        <label htmlFor="name">Todo Name:</label>
-                        <input
-                            type="text"
-                            name="name"
-                            id="name"
-                            value={newTodo.name}
-                            onChange={(e) => setNewTodo({ ...newTodo, name: e.target.value })}
-                            required
-                        />
-                        <button type="submit">Add Todo</button>
-                    </form>
-                    <ul>
-                        {todos && todos.map((todo) => (
-                            <li key={todo.id}>
-                                <h3>{todo.name}</h3>
-                                {todo.tasks && (
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Title</th>
-                                                <th>Description</th>
-                                                <th>Due Date</th>
-                                                <th>Priority</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {todo.tasks.map((task, index) => (
-                                                <tr key={task.id}>
-                                                    <td><strong>{task.title}</strong></td>
-                                                    <td>{task.description}</td>
-                                                    <td>{task.dueDate?.toLocaleDateString()}</td>
-                                                    <td>{task.priority}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                                <form onSubmit={(e) => {
-                                    e.preventDefault();
-                                    handleTaskSubmit(todo.id);
-                                }}>
-                                    <label htmlFor="title">Task Title:</label>
-                                    <input
-                                        type="text"
-                                        name="title"
-                                        id="title"
-                                        value={newTask.title}
-                                        onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                                        required
-                                    />
-                                    <label htmlFor="description">Task Description:</label>
-                                    <input
-                                        type="text"
-                                        name="description"
-                                        id="description"
-                                        value={newTask.description}
-                                        onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                                    />
-                                    <label htmlFor="dueDate">Task Due Date:</label>
-                                    <input
-                                        type="date"
-                                        name="dueDate"
-                                        id="dueDate"
-                                        value={newTask.dueDate?.toISOString().slice(0, 10)}
-                                        onChange={(e) => setNewTask({
-                                            ...newTask,
-                                            dueDate: e.target.value ? new Date(e.target.value) : null,
-                                        })}
-                                    />
-                                    <label htmlFor="priority">
-                                        Task Priority:
-                                        <select
-                                            name="priority"
-                                            id="priority"
-                                            value={newTask.priority}
-                                            onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
-                                        >
-                                            <option value="low">Low</option>
-                                            <option value="medium">Medium</option>
-                                            <option value="high">High</option>
-                                        </select>
-                                    </label>
-                                    <button type="submit">Add Task</button>
-                                </form>
-                            </li>
-                        ))}
-                    </ul>
-                </>
-            )}
-        </>
+        <div className="container">
+
+            <button onClick={handleLogout} className="logout-button">Logout</button>
+
+            <form onSubmit={handleSubmit} className="form">
+                <select
+                    value={todolistname}
+                    onChange={handleTodoListChange}
+                    className="input"
+                    required // Make the select field required
+                >
+                    <option value="" disabled>
+                        Select Todo List
+                    </option>
+                    {todolistOptions.map((option, index) => (
+                        <option key={index} value={option}>
+                            {option}
+                        </option>
+                    ))}
+                    <option value="addNew">Add New Todo List</option>
+                </select>
+                {todolistname === "addNew" && (
+                    <input
+                        type="text"
+                        placeholder="Enter New Todo List Name"
+                        value={newTodolistName}
+                        onChange={handleNewTodoListNameChange}
+                        className="input"
+                        required // Make the input field required
+                    />
+                )}
+                <input
+                    type="text"
+                    placeholder="Title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required // Make the input field required
+                    className="input"
+                />
+                <input
+                    type="date"
+                    value={date}
+                    min={today}
+                    onChange={(e) => setDate(e.target.value)}
+                    required // Make the input field required
+                    className="input"
+                />
+                <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    required // Make the select field required
+                    className="select"
+                >
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+                <textarea
+                    placeholder="Description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    required // Make the textarea field required
+                    className="textarea"
+                ></textarea>
+                <button type="submit" className="button">
+                    Add Todo
+                </button>
+            </form>
+            <br />
+            <div>
+                <UserProfile id={userId} />
+            </div>
+        </div>
     );
 };
 

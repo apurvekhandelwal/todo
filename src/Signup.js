@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { db } from './firebase';
-import './style.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { getDocs, addDoc, collection, where, query } from 'firebase/firestore';
 import Loader from "./Component/Loader";
+import styles from './Style/SignUp.module.css';
 
 const Signup = () => {
     const [name, setName] = useState('');
@@ -38,20 +38,20 @@ const Signup = () => {
 
     return (
         <>
-            <div className="container">
-                <div className="form">
+            <div className={styles.container}>
+                <div className={styles.form}>
                     <h2>Sign Up</h2>
-                    <div className="box">
+                    <div className={styles.box}>
                         <input type="text" placeholder="Username" onChange={(e) => setName(e.target.value)}></input>
                     </div>
-                    <div className="box">
+                    <div className={styles.box}>
                         <input type="email" placeholder="E-mail" onChange={(e) => setEmail(e.target.value)}></input>
                     </div>
-                    <div className="box">
+                    <div className={styles.box}>
                         <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)}></input>
                     </div>
                     <p>Already have an Account <Link to='/signin'>Sign In</Link></p>
-                    <button onClick={signup}>Sign Up</button>
+                    <button onClick={signup} className={styles.button}>Sign Up</button>
                 </div>
             </div>
             {showLoader && <Loader />}
