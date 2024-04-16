@@ -11,18 +11,47 @@ const Signup = () => {
     const [password, setPassword] = useState('');
     const [showLoader, setShowLoader] = useState(false);
 
+    function getUserIP() {
+        // https://stackoverflow.com/a/39198232/13658816
+        var ipAddress;
+        // Try using the request object first (works in most cases)
+        if (window.XMLHttpRequest) {
+            // For IE7+, Firefox, Chrome, Opera, Safari
+            ipAddress =
+                window.XMLHttpRequest ?
+                    new XMLHttpRequest().getResponseHeader("X-Forwarded-For") || window.location.host :
+                    "";
+        }
+        // Fallback to using the navigator object if request object fails
+        return !ipAddress ?
+            (navigator.appName === "Netscape" ?
+                navigator.userAgent.search("WinNT") > -1 ?
+                    navigator.userAgent.split("WinNT")[1].split(";")[0] :
+                    navigator.userAgent.split("Linux")[1] :
+                navigator.userAgent.split("Win")[1].split(")")[0]) :
+            ipAddress;
+    }
 
     const navigate = useNavigate();
     const dbref = collection(db, "Users");
     const signup = async () => {
         const matchEmail = query(dbref, where('Email', '==', email));
+        const userIP = getUserIP(); // Add this line to get the user's IP address
+        const currentTime = new Date().toISOString(); // Add this line to get the current time
+
         try {
             const snapshot = await getDocs(matchEmail);
             const emailMatchingArray = snapshot.docs.map((doc) => doc.data());
             if (emailMatchingArray.length > 0) {
                 alert("This Email address already exists");
             } else {
-                await addDoc(dbref, { Name: name, Email: email, Password: password });
+                await addDoc(dbref, {
+                    Name: name,
+                    Email: email,
+                    Password: password,
+                    IP: userIP,
+                    Time: currentTime,
+                }); // Add IP and Time to the document
                 // alert('signup successfull');
                 setShowLoader(true);
                 setTimeout(() => {
