@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { db } from './firebase';
 import { Link, useNavigate } from 'react-router-dom';
 import { getDocs, addDoc, collection, where, query } from 'firebase/firestore';
@@ -10,33 +10,27 @@ const Signup = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showLoader, setShowLoader] = useState(false);
+    const [ipAddress, setIpAddress] = useState('');
 
-    function getUserIP() {
-        // https://stackoverflow.com/a/39198232/13658816
-        var ipAddress;
-        // Try using the request object first (works in most cases)
-        if (window.XMLHttpRequest) {
-            // For IE7+, Firefox, Chrome, Opera, Safari
-            ipAddress =
-                window.XMLHttpRequest ?
-                    new XMLHttpRequest().getResponseHeader("X-Forwarded-For") || window.location.host :
-                    "";
+    useEffect(() => {
+        async function getUserIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                setIpAddress(data.ip);
+            } catch (error) {
+                console.error('Error fetching IP address:', error);
+            }
         }
-        // Fallback to using the navigator object if request object fails
-        return !ipAddress ?
-            (navigator.appName === "Netscape" ?
-                navigator.userAgent.search("WinNT") > -1 ?
-                    navigator.userAgent.split("WinNT")[1].split(";")[0] :
-                    navigator.userAgent.split("Linux")[1] :
-                navigator.userAgent.split("Win")[1].split(")")[0]) :
-            ipAddress;
-    }
+        getUserIP();
+    }, []);
+
 
     const navigate = useNavigate();
     const dbref = collection(db, "Users");
     const signup = async () => {
         const matchEmail = query(dbref, where('Email', '==', email));
-        const userIP = getUserIP(); // Add this line to get the user's IP address
+        // const userIP = getUserIP(); // Add this line to get the user's IP address
         const currentTime = new Date().toISOString(); // Add this line to get the current time
 
         try {
@@ -49,7 +43,7 @@ const Signup = () => {
                     Name: name,
                     Email: email,
                     Password: password,
-                    IP: userIP,
+                    IP: ipAddress,
                     Time: currentTime,
                 }); // Add IP and Time to the document
                 // alert('signup successfull');
