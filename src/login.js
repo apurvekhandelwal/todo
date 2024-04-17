@@ -41,9 +41,9 @@ const Login = () => {
                 setShowLoader(true);
                 querySnapshot.forEach((doc) => {
                     const userData = doc.data();
-                    console.log("User document ID: ", doc.id);
-                    console.log("User data:");
-                    console.log(userData);
+                    // console.log("User document ID: ", doc.id);
+                    // console.log("User data:");
+                    // console.log(userData);
 
                     setUid(doc.id);
                     setTimeout(() => {

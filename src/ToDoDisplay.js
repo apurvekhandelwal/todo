@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 // import { getUserById } from "./useFirebase";
-import { addDoc, collection, query, where, getDocs, doc, onSnapshot } from 'firebase/firestore';
+import { addDoc, collection, query, where, getDocs, doc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from "./firebase";
 import UserProfile from "./UserProfile";
 import './Style/TodoDispaly.css';
@@ -51,7 +51,7 @@ const Todo = () => {
                     });
                     setTodolistOptions(options);
                 });
-                console.log(userId);
+                // console.log(userId);
                 return () => unsubscribe();
             } catch (error) {
                 console.error("Error fetching todo lists:", error);
@@ -88,7 +88,9 @@ const Todo = () => {
                         collection(userRef, "todolists"),
                         {
                             name: newTodolistName,
-                            userID: userId
+                            userID: userId,
+                            creationTime: serverTimestamp(),
+                            lastUpdated: serverTimestamp()
                         }
                     );
 
