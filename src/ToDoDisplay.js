@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 // import { getUserById } from "./useFirebase";
-import { addDoc, collection, query, where, getDocs, doc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, query, where, getDocs, doc, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db, auth } from "./firebase";
 import UserProfile from "./UserProfile";
 import './Style/TodoDispaly.css';
@@ -77,6 +77,8 @@ const Todo = () => {
                 }
 
                 const userRef = doc(db, "Users", userId);
+                const userDoc = await getDoc(userRef);
+                const userEmail = userDoc.data().Email;
                 const todolistQuery = query(
                     collection(userRef, "todolists"),
                     where("name", "==", selectedTodoListName)
@@ -99,6 +101,9 @@ const Todo = () => {
                         description: description,
                         date: date,
                         priority: priority,
+                        timeOfCreation: serverTimestamp(),
+                        userEmail: userEmail,
+                        todoListTitle: newTodolistName
                     });
                 } else if (!todolistSnapshot.empty) {
                     todolistSnapshot.forEach(async (doc) => {
@@ -107,6 +112,9 @@ const Todo = () => {
                             description: description,
                             date: date,
                             priority: priority,
+                            timeOfCreation: serverTimestamp(),
+                            userEmail: userEmail,
+                            todoListTitle: selectedTodoListName
                         });
                     });
                 }
